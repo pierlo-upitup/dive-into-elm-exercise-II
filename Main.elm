@@ -1,4 +1,4 @@
-module Main (..) where
+module Main exposing (..)
 
 -- --------------------------
 -- Exercise 1:
@@ -16,23 +16,22 @@ module Main (..) where
 -- 2. Compile the resulting JS file with the Closure Compiler in ADVANCED mode
 --
 -- https://developers.google.com/closure/compiler/
--- 
+--
 -- --------------------------
 -- Exercise 3 (optional):
 -- --------------------------
 -- Create an outgoing port that exposes the current forecast. Create an
 -- index.html and embed the elm application in fullscreen mode. Log the
--- received forecast-data to the browser console.   
+-- received forecast-data to the browser console.
 -- Start elm reactor and check if everything works as exptected.
--- 
+--
 -- http://guide.elm-lang.org/interop/javascript.html
 
 
 import Html exposing (..)
 import Html.Events exposing (onClick)
-import Signal exposing (..)
-import StartApp.Simple as StartApp
-
+import Html.App as Html
+import Time exposing (..)
 
 -- MODEL
 
@@ -69,8 +68,8 @@ forecast_hh =
 
 forecast_berlin : Model
 forecast_berlin =
-  { city = "Berlin" 
-  , forecast = 
+  { city = "Berlin"
+  , forecast =
     [ { day = "TUE", max = 18, min = 7, description = "Partly Cloudy" }
     , { day = "WED", max = 16, min = 4, description = "Cloudy" }
     , { day = "THU", max = 19, min = 6, description = "Sunny" }
@@ -94,33 +93,44 @@ initalModel =
 -- UPDATE
 
 
-type Action
+type Msg
   = Reset
   | Show Model
   | Toggle
+  | Tick Time
 
 
-update : Action -> Model -> Model
+update : Msg -> Model -> (Model, Cmd a)
 update action model =
   case action of
     Reset ->
-      initalModel
+      (initalModel, Cmd.none)
 
     Show forecast ->
-      forecast
+      (forecast, Cmd.none)
 
     Toggle ->
-      if model == forecast_hh then 
-        forecast_berlin 
-      else 
-        forecast_hh
+      if model == forecast_hh then
+        (forecast_berlin, Cmd.none)
+      else
+        (forecast_hh, Cmd.none)
+
+    Tick time -> 
+      let cur = Debug.log "time: " time
+      in (model, Cmd.none)
 
 
+
+-- SUBSCRIPTIONS
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+  Time.every second Tick
 
 -- VIEW
 
 
-forecastListView : List Weather -> Html
+forecastListView : List Weather -> Html Msg
 forecastListView forecast =
   let
     -- table header
@@ -153,7 +163,7 @@ forecastListView forecast =
       ]
 
 
-forecastDetailView : Weather -> Html
+forecastDetailView : Weather -> Html Msg
 forecastDetailView detail =
   tr
     []
@@ -164,26 +174,32 @@ forecastDetailView detail =
     ]
 
 
-cityView : City -> Html
+cityView : City -> Html Msg
 cityView city =
   h1 [] [ text city ]
 
 
-view : Address Action -> Model -> Html
-view address model =
+view : Model -> Html Msg
+view model =
   div
     []
     [ button
-        [ onClick address Toggle ]
+        [ onClick Toggle ]
         [ text "Toggle" ]
     , button
-        [ onClick address Reset ]
+        [ onClick Reset ]
         [ text "Reset" ]
     , cityView model.city
     , forecastListView model.forecast
     ]
 
 
-main : Signal Html.Html
+
+
 main =
-  StartApp.start { model = initalModel, view = view, update = update }
+  Html.program
+    { init = (initalModel, Cmd.none)
+    , view = view
+    , update = update
+    , subscriptions = subscriptions
+    }
